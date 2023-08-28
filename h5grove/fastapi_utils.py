@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, Response, Query, Request
 from fastapi.routing import APIRoute
 from pydantic import BaseSettings
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Union, Callable,Dict, Any
 
 from .content import (
     DatasetContent,
@@ -45,6 +45,7 @@ The directory from which files are served can be defined in `settings`.
 
 class Settings(BaseSettings):
     base_dir: Union[str, None] = None
+    h5py_options: Dict[str, Any] = None
 
 
 settings = Settings()
@@ -81,7 +82,7 @@ async def get_attr(
     attr_keys: Optional[List[str]] = Query(default=None),
 ):
     """`/attr/` endpoint handler"""
-    with get_content_from_file(file, path, create_error) as content:
+    with get_content_from_file(file, path, create_error,h5py_options=settings.h5py_options) as content:
         assert isinstance(content, ResolvedEntityContent)
         h5grove_response = encode(content.attributes(attr_keys), "json")
         return Response(
@@ -99,7 +100,7 @@ async def get_data(
     selection=None,
 ):
     """`/data/` endpoint handler"""
-    with get_content_from_file(file, path, create_error) as content:
+    with get_content_from_file(file, path, create_error,h5py_options=settings.h5py_options) as content:
         assert isinstance(content, DatasetContent)
         data = content.data(selection, flatten, dtype)
         h5grove_response = encode(data, format)
@@ -116,7 +117,7 @@ async def get_meta(
 ):
     """`/meta/` endpoint handler"""
 
-    with get_content_from_file(file, path, create_error, resolve_links) as content:
+    with get_content_from_file(file, path, create_error, resolve_links,h5py_options=settings.h5py_options) as content:
         h5grove_response = encode(content.metadata(), "json")
         return Response(
             content=h5grove_response.content, headers=h5grove_response.headers
@@ -128,7 +129,7 @@ async def get_stats(
     file: str = Depends(add_base_path), path: str = "/", selection=None
 ):
     """`/stats/` endpoint handler"""
-    with get_content_from_file(file, path, create_error) as content:
+    with get_content_from_file(file, path, create_error,h5py_options=settings.h5py_options) as content:
         assert isinstance(content, DatasetContent)
         h5grove_response = encode(content.data_stats(selection), "json")
         return Response(
@@ -142,7 +143,7 @@ async def get_paths(
     path: str = "/",
     resolve_links: str = "only_valid",
 ):
-    with get_list_of_paths(file, path, create_error, resolve_links) as paths:
+    with get_list_of_paths(file, path, create_error, resolve_links,h5py_options=settings.h5py_options) as paths:
         h5grove_response = encode(paths, "json")
         return Response(
             content=h5grove_response.content, headers=h5grove_response.headers
